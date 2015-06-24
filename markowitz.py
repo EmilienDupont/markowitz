@@ -3,18 +3,29 @@
 from gurobipy import *
 from pylab import *
 
-# Create Model
-m = Model()
 
-# Data for problem (MOSEK example data to debug)
-pBar = [0.1073, 0.0737, 0.0627]
-Sigma = [[0.02778, 0.00387, 0.00021],
+###### Input received
+A = [[0.02778, 0.00387, 0.00021],
     [0.00387, 0.01112, -0.00020],
     [0.00021, -0.00020, 0.00115]]
-maxStdDev = [0.035, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09]
-n = len(pBar)
+######
 
-# Add variables
+m = Model()
+
+A = np.array(A)
+
+n = A.shape[1] # number of stocks
+N = A.shape[0] # number of days traded
+
+# Mean return for each stock
+e = np.ones(N)
+r = np.dot(A.T,e)
+
+# Covariance matrix
+Abar = (A - np.outer(e,r))/(math.sqrt(N-1))
+Sigma = dot(Abar.T, Abar)
+
+# Add variables (one for each stock)
 x = {};
 for i in range(n):
     x[i] = m.addVar(lb=0, vtype=GRB.CONTINUOUS, name = 'x' + str(i))
@@ -22,36 +33,41 @@ for i in range(n):
 m.update()
 
 # Add constraints
-# 1.x = 1
 m.addConstr(quicksum(x[i] for i in range(n)) == 1)
 
-# Variance constraint (use symmetry here to make calculation faster)
 variance = 0
 for i in range(n):
     for j in range(n):
         variance += x[i]*Sigma[i][j]*x[j]
 
 # Set objective
-m.setObjective(quicksum(pBar[i]*x[i] for i in range(n)), GRB.MAXIMIZE)
+m.setObjective(quicksum(r[i]*x[i] for i in range(n)), GRB.MAXIMIZE)
 
-solution = [];
-k = len(maxStdDev)
+solution = []
+stdDev = []
+k = 20
 
+# Compute solution for k different points
 for i in range(k):
+    stdDev.insert(0, 0.03 + 0.005*(k-i))
     
-    m.addConstr(variance <= maxStdDev[k-1-i]*maxStdDev[k-1-i])
+    m.addConstr(variance <= stdDev[0]*stdDev[0])
 
     m.update()
 
     m.optimize()
     
-    solution.insert(0, m.ObjVal)
+    # Check if model is infeasible or unbounded
+    if (m.status == 3 or m.status == 4):
+        sol = 0
+    else:
+        sol = m.ObjVal
+    
+    solution.insert(0, sol)
 
 print solution
 
-print maxStdDev
-
-plot(maxStdDev, solution)
+plot(stdDev, solution)
 
 xlabel('risk')
 ylabel('return')
