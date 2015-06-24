@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<!-- Next lines for math/latex -->
+<script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<script>
+  MathJax.Hub.Config({
+                      tex2jax: {inlineMath: [['$', '$'], ['\\(','\\)']]},
+                      TeX: { equationNumbers: {autoNumber: "AMS"} },
+                      "HTML-CSS": { showMathMenu: false,
+                                    scale: 90 }
+
+                     });
+</script>
+
+<!-- Next lines for styling (CSS) -->
+<style>
+
+rect {
+  fill: none;
+  pointer-events: all;
+}
+
+.node {
+  fill: #000;
+}
+
+.cursor {
+  fill: none;
+  stroke: brown;
+  pointer-events: none;
+}
+
+.link {
+  stroke: #999;
+}
+
+</style>
+<!-- Next lines html -->
+<body>
+  <!-- Navigation -->
+  <ul id="nav">
+    <li class="current"><a href="#intro">Intro</a></li>
+    <li><a href="#problem">Problem</a></li>
+    <li><a href="#model">Model</a></li>
+    <li><a href="#implementation">Implementation</a></li>
+    <li><a href="#demo">Live Demo</a></li>
+  </ul>
+  <!--Set title and write stuff-->
+  <div id="container">
+    <div class="section" id="intro">
+      <h1>Markowitz Portfolio Optimization</h1>
+        <subtitle>with integer programming and Gurobi</subtitle>
+    </div>
+
+    <div class="section" id="problem">
+      <h2><a href="#problem" name="problem">Problem Description</a></h2>
+      Problem description goes here
+    </div>
+    <div class="section" id="model">
+      <h2><a href="#model" name="model">Mathematical Model</a></h2>
+
+      <p>Model description goes here.</p>
+
+<!-- We use tex with $ as usual-->
+      <p>Let $V$ be the set of vertices in our graph and $E$ the set of edges.
+      We are interested in computing an <i>edge cover</i>: a set of
+      edges $C$ that cover all vertices in the graph (i.e. so that each vertex
+      in the graph has at least one edge incident on it).
+      </p>
+
+      <p> A minimal edge cover is one that uses the fewest edges. We
+        will compute this with integer programming. </p>
+
+      <p>First we define the variables
+      <!-- Eq in [] -->
+      \[
+      x_e = \left\{\begin{array}{ll}
+             1 & \text{if  $e \in E$ is in the cover}\\
+             0 & \mathrm{otherwise}
+            \end{array}\right.
+      \]
+      </p>
+
+      <p>Then the following model can be solved to obtain a minimal edge cover
+      \[
+      \begin{array}{ll}
+      \text{minimize} & \sum_{e \in E} x_e \\
+      \text{subject to} & \sum_{(u,v)=e \in E} x_e + \sum_{(v,u)=e \in E} x_e \ge 1, \quad \forall v \in V \\
+                        & x_e \in \{ 0, 1 \} \quad \forall e \in E
+      \end{array}
+      \]
+      </p>
+
+      <p>Given an optimal solution $x^\star$ to the above model, we
+      know that an edge $e$ will be in a minimal cover $C^\star$
+      if $x^\star_e = 1$. </p>
+<!-- implementation (gurobi code) -->
+    </div>
+    <div class="section" id="implementation">
+      <h2><a href="#implementation" name="implementation">Implementation</a></h2>
+      <p>Below is the full implementation of the model (and the associated data) in
+        Gurobi's Python interface:
+      </p>
+      <pre>
+        import numpy as np
+        import math
+        from gurobipy import *
+
+        # Data Matrix
+        D = [[0.02778, 0.00387, 0.00021],
+          [0.00387, 0.01112, -0.00020],
+          [0.00021, -0.00020, 0.00115]]
+        
+        m = Model()
+        
+        D = np.array(D)
+        
+        n = D.shape[1] # number of stocks
+        N = D.shape[0] # number of days traded
+        
+        # Mean return for each stock
+        e = np.ones(N)
+        r = np.dot(D.T,e)
+        
+        # Covariance matrix
+        Dbar = (D - np.outer(e,r))/(math.sqrt(N-1))
+        Sigma = np.dot(Dbar.T, Dbar)
+        
+        # Add variables for each stock
+        x = {};
+        for i in range(n):
+          x[i] = m.addVar(lb=0, vtype=GRB.CONTINUOUS, name = 'x' + str(i))
+        
+        m.update()
+        
+        # Add constraints
+        m.addConstr(quicksum(x[i] for i in range(n)) == 1)
+        
+        maxStdDev = 0.05
+        variance = 0
+        for i in range(n):
+          for j in range(n):
+              variance += x[i]*Sigma[i][j]*x[j]
+        m.addConstr(variance <= maxStdDev*maxStdDev)
+        
+        # Set objective
+        m.setObjective(quicksum(r[i]*x[i] for i in range(n)), GRB.MAXIMIZE)
+        
+        m.optimize()
+      </pre>
+    </div>
+    <div class="section" id="demo">
+      <h2><a href="#demo" name="demo">Live Demo</a></h2>
+      <!-- Where we put graphics -->
+      <div id="demoarea">
+      </div>
+      <!-- When button is clicked => calls compute() -->
+      <button onclick="compute()">Compute Edge Cover</button>
+    </div>
+
+    <!-- Load d3 library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+<!-- After script, javascript -->
+<script>
+
+var width = 500;
+var height = 100;
+var barPadding = 1;
+
+var dataset = [ 5, 10, 13, 19, 21, 25, 22, 18, 15, 13,
+                11, 12, 15, 20, 18, 17, 16, 18, 23, 25 ];
+
+//Create SVG element
+var svg = d3.select("body")
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+svg.selectAll("rect")
+   .data(dataset)
+   .enter()
+   .append("rect")
+   .attr("x", function(d, i) {
+    return i * (width / dataset.length);
+    })
+   .attr("y", 0)
+   .attr("width", width / dataset.length - barPadding)
+   .attr("height", 100);
+   
+
+// All above lines come from a d3 example (mbostock)
+function compute() {
+  var vertices = [];
+  var edges    = [];
+  var edge;
+  for (var i = 0; i < nodes.length; i++) {
+     vertices.push(nodes[i].index);
+  }
+  for (i = 0; i < links.length; i++) {
+     edge = links[i];
+     if (edge.source.index !== edge.target.index) {
+       edges.push([edge.source.index, edge.target.index]);
+     }
+  }
+  console.log('vertices', vertices); // write out to the log (like print)
+  console.log('edges', edges);
+
+  d3.json('/resource') // using json (javascript format) function to send stuff to /resource page
+    .header('Content-Type', 'application/json')
+    .post(JSON.stringify({'vertices': vertices,
+                          'edges': edges }), serverResponse); // Send dictionary with vertices and edges (arrays are values)
+} //When servers respond call serverResponse function
+
+function serverResponse(error, data) {
+   console.log('serverResponse');
+   console.log('data', data); // Print out data
+   if (!error) { // error = 0 => everything okay
+      if ('cover' in data) { // data is dict, should have a key cover
+        var cover = data.cover;
+        console.log('cover', cover);
+        d3.selectAll('.link') // execute function on each edge
+        .each(function(d) {
+                  var header = d3.select(this);
+                  // Convert to array with the index as the number corresponding to a vertex
+                  // (this also adds links (1,1), (2,2) etc but this wont affect it, as they will not be in cover)
+                  var d_arr = Object.keys(d).map(function (key) {return Number(d[key].index)});
+
+                  if (inArray(cover, d_arr)) { // if edge is in cover color it red
+                      header.style({'stroke': 'red'});
+                      header.style({'stroke-width': 3});
+                  } else {
+                      header.style({'stroke': '#999'});
+                      header.style({'stroke-width': 1});
+                  }
+        });
+      }
+   }
+}
+
+</script>
