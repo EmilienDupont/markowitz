@@ -14,8 +14,8 @@ m = Model()
 # Data for problem (MOSEK example data to debug)
 pBar = [0.1073, 0.0737, 0.0627]
 Sigma = np.array([[0.02778, 0.00387, 0.00021],
-    [0.00387, 0.01112, -0.00020],
-    [0.00021, -0.00020, 0.00115]])
+                    [0.00387, 0.01112, -0.00020],
+                    [0.00021, -0.00020, 0.00115]])
 
 # note that this might not be square (so would need to change this after)
 #L = np.linalg.cholesky(Sigma)

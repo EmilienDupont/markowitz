@@ -15,18 +15,16 @@ else:
     PORT = 8000
 
 
-import markowitz # module that contains Gurobi code
+import markowitz
 
 def handleoptimize(jsdict):
-    if 'vertices' in jsdict:
+    if 'dataMatrix' in jsdict:
         print 'Inside handle optimize!'
-        print jsdict['vertices']
-        #print jsdict['edges']
-        tour = airlineTSP.optimize(jsdict['vertices'])
-        print 'tour', tour
-        return {'tour': tour }
+        print jsdict['dataMatrix']
+        maxRet = markowitz.optimize(jsdict['dataMatrix'])
+        print 'maxRet', maxRet
+        return {'maxRet': maxRet }
 
-# Set up a webserver (can probably use this for other examples too...)
 class ServerHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
     def do_GET(self):

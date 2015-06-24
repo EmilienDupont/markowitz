@@ -16,24 +16,7 @@
 <!-- Next lines for styling (CSS) -->
 <style>
 
-rect {
-  fill: none;
-  pointer-events: all;
-}
-
-.node {
-  fill: #000;
-}
-
-.cursor {
-  fill: none;
-  stroke: brown;
-  pointer-events: none;
-}
-
-.link {
-  stroke: #999;
-}
+/* CSS stuff here */
 
 </style>
 <!-- Next lines html -->
@@ -103,10 +86,12 @@ rect {
         Gurobi's Python interface:
       </p>
       <pre>
+        THERE ARE SOME TYPOS IN HERE, CHECK AGAIN
         import numpy as np
         import math
         from gurobipy import *
 
+        !!! CHANGE THIS DATA MATRIX !!!
         # Data Matrix
         D = [[0.02778, 0.00387, 0.00021],
           [0.00387, 0.01112, -0.00020],
@@ -156,7 +141,7 @@ rect {
       <div id="demoarea">
       </div>
       <!-- When button is clicked => calls compute() -->
-      <button onclick="compute()">Compute Edge Cover</button>
+      <button onclick="compute()">Compute Optimal Portfolio</button>
     </div>
 
     <!-- Load d3 library -->
@@ -164,76 +149,137 @@ rect {
 <!-- After script, javascript -->
 <script>
 
-var width = 500;
-var height = 100;
-var barPadding = 1;
 
-var dataset = [ 5, 10, 13, 19, 21, 25, 22, 18, 15, 13,
-                11, 12, 15, 20, 18, 17, 16, 18, 23, 25 ];
+
+//Width and height
+var w = 800;
+var h = 500;
+var len = 20; // include 20 bars
+
+var formatAsPercentage = d3.format(".1%")
+
+var maxRet = [];
+for (var i = 0; i < len; i++) {
+  maxRet.push(Math.random())
+}
+
+var xScale = d3.scale.ordinal()
+                      .domain(d3.range(len))
+                      .rangeRoundBands([0, w], 0.05);
+
+var yScale = d3.scale.linear()
+                      .domain([0, d3.max(maxRet)])
+                      .range([0, h]);
 
 //Create SVG element
-var svg = d3.select("body")
-            .append("svg")
-            .attr("width", width)
-            .attr("height", height);
+var svg = d3.select("#demoarea")
+              .append("svg")
+              .attr("width", w)
+              .attr("height", h);
 
+
+
+//Create bars
 svg.selectAll("rect")
-   .data(dataset)
-   .enter()
-   .append("rect")
-   .attr("x", function(d, i) {
-    return i * (width / dataset.length);
-    })
-   .attr("y", 0)
-   .attr("width", width / dataset.length - barPadding)
-   .attr("height", 100);
-   
+.data(maxRet)
+.enter()
+.append("rect")
+.attr("x", function(d, i) {
+      return xScale(i);
+})
+.attr("y", function(d) {
+      return h - yScale(d);
+})
+.attr("width", xScale.rangeBand())
+.attr("height", function(d) {
+      return yScale(d);
+})
+.attr("fill", function(d) {
+      return "rgb(0, 0, " + (d * 10) + ")";
+});
 
-// All above lines come from a d3 example (mbostock)
+//Create labels
+svg.selectAll("text")
+.data(maxRet)
+.enter()
+.append("text")
+.text(function(d) {
+      return d;
+})
+.attr("text-anchor", "middle")
+.attr("x", function(d, i) {
+      return xScale(i) + xScale.rangeBand() / 2;
+})
+.attr("y", function(d) {
+      return h - yScale(d) + 14;
+})
+.attr("font-family", "sans-serif")
+.attr("font-size", "11px")
+.attr("fill", "white");
+
+
+
 function compute() {
-  var vertices = [];
-  var edges    = [];
-  var edge;
-  for (var i = 0; i < nodes.length; i++) {
-     vertices.push(nodes[i].index);
+  dataMatrix = [];
+  for (var i = 0; i < 5; i++) {
+    row = [];
+    for (var j = 0; j < 5; j++) {
+      row.push(Math.random())
+    }
+    dataMatrix.push(row)
   }
-  for (i = 0; i < links.length; i++) {
-     edge = links[i];
-     if (edge.source.index !== edge.target.index) {
-       edges.push([edge.source.index, edge.target.index]);
-     }
-  }
-  console.log('vertices', vertices); // write out to the log (like print)
-  console.log('edges', edges);
+  
+  console.log('dataMatrix', dataMatrix); // write out to the log (like print)
 
   d3.json('/resource') // using json (javascript format) function to send stuff to /resource page
     .header('Content-Type', 'application/json')
-    .post(JSON.stringify({'vertices': vertices,
-                          'edges': edges }), serverResponse); // Send dictionary with vertices and edges (arrays are values)
-} //When servers respond call serverResponse function
+    .post(JSON.stringify({'dataMatrix': dataMatrix}), serverResponse);
+}
 
 function serverResponse(error, data) {
    console.log('serverResponse');
    console.log('data', data); // Print out data
    if (!error) { // error = 0 => everything okay
-      if ('cover' in data) { // data is dict, should have a key cover
-        var cover = data.cover;
-        console.log('cover', cover);
-        d3.selectAll('.link') // execute function on each edge
-        .each(function(d) {
-                  var header = d3.select(this);
-                  // Convert to array with the index as the number corresponding to a vertex
-                  // (this also adds links (1,1), (2,2) etc but this wont affect it, as they will not be in cover)
-                  var d_arr = Object.keys(d).map(function (key) {return Number(d[key].index)});
-
-                  if (inArray(cover, d_arr)) { // if edge is in cover color it red
-                      header.style({'stroke': 'red'});
-                      header.style({'stroke-width': 3});
-                  } else {
-                      header.style({'stroke': '#999'});
-                      header.style({'stroke-width': 1});
-                  }
-        });
+      if ('maxRet' in data) { // data is dict, should have a key cover
+        var maxRet = data.maxRet;
+        console.log('maxRet', maxRet);
+        
+        //Update all rects
+        svg.selectAll("rect")
+           .data(maxRet)
+           .transition()
+           .delay(function(d, i) {
+                   return i / len * 1000;
+           })
+           .duration(500)
+           .attr("y", function(d) {
+                        return h - yScale(d);
+           })
+           .attr("height", function(d) {
+                        return yScale(d);
+           })
+           .attr("fill", function(d) {
+                        return "rgb(0, 0, " + (d * 256) + ")";
+           });
+  
+        //Update all labels
+        svg.selectAll("text")
+           .data(maxRet)
+           .transition()
+           .delay(function(d, i) {
+                   return i / len * 1000;
+           })
+           .duration(500)
+           .text(function(d) {
+                        return formatAsPercentage(d);
+           })
+           .attr("x", function(d, i) {
+                        return xScale(i) + xScale.rangeBand() / 2;
+           })
+           .attr("y", function(d) {
+                        return h - yScale(d) + 14;
+           });
+        
       }
    }
 }
