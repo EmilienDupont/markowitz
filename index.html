@@ -193,9 +193,11 @@ svg.selectAll("rect")
 .attr("width", xScale.rangeBand())
 .attr("height", function(d) {
       return yScale(d);
-})
-.attr("fill", function(d) {
-      return "rgb(0, 0, " + (d * 10) + ")";
+});
+
+
+svg.selectAll("rect").attr("fill", function(d) {
+      return "rgb(0, 0, " + ((4*d-1.2) * 256) + ")";
 });
 
 //Create labels
@@ -204,7 +206,7 @@ svg.selectAll("text")
 .enter()
 .append("text")
 .text(function(d) {
-      return d;
+      return formatAsPercentage(d);
 })
 .attr("text-anchor", "middle")
 .attr("x", function(d, i) {
@@ -259,7 +261,7 @@ function serverResponse(error, data) {
                         return yScale(d);
            })
            .attr("fill", function(d) {
-                        return "rgb(0, 0, " + (d * 256) + ")";
+                        return "rgb(0, 0, " + ((4*d-1.2) * 256) + ")";
            });
   
         //Update all labels
