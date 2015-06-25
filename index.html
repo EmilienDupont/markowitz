@@ -16,7 +16,17 @@
 <!-- Next lines for styling (CSS) -->
 <style>
 
-/* CSS stuff here */
+.axis path,
+.axis line {
+        fill: none;
+        stroke: black;
+        shape-rendering: crispEdges;
+}
+
+.axis text {
+        font-family: sans-serif;
+        font-size: 11px;
+}
 
 </style>
 <!-- Next lines html -->
@@ -154,6 +164,7 @@
 //Width and height
 var w = 800;
 var h = 500;
+var padding = 50;
 var len = 20; // include 20 bars
 
 var formatAsPercentage = d3.format(".1%")
@@ -165,11 +176,14 @@ for (var i = 0; i < len; i++) {
 
 var xScale = d3.scale.ordinal()
                       .domain(d3.range(len))
-                      .rangeRoundBands([0, w], 0.05);
+                      .rangeRoundBands([padding, w], 0.05);
 
 var yScale = d3.scale.linear()
                       .domain([0, d3.max(maxRet)])
-                      .range([0, h]);
+                      .range([padding, h - padding]);
+
+var yAxisScale = d3.scale.linear().domain([0, d3.max(maxRet)])
+                                .range([h - padding, padding]);
 
 //Create SVG element
 var svg = d3.select("#demoarea")
@@ -192,7 +206,7 @@ svg.selectAll("rect")
 })
 .attr("width", xScale.rangeBand())
 .attr("height", function(d) {
-      return yScale(d);
+      return yScale(d) - padding;
 });
 
 
@@ -219,7 +233,46 @@ svg.selectAll("text")
 .attr("font-size", "11px")
 .attr("fill", "white");
 
+//Define X axis
+var xAxis = d3.svg.axis()
+              .scale(xScale)
+              .orient("bottom")
+              .ticks(5);
 
+//Define Y axis
+var yAxis = d3.svg.axis()
+              .scale(yAxisScale)
+              .orient("left")
+              .ticks(5);
+
+//Create X axis
+svg.append("g")
+    .attr("class", "axis")
+    .attr("transform", "translate(0," + (h - padding) + ")")
+    .call(xAxis);
+
+svg.append("text")
+    .attr("transform", "translate(" + (w / 2) + " ," + (h - padding/4) + ")")
+    .style("text-anchor", "middle")
+    .attr("font-size", "18px")
+    .attr("font-family", "sans-serif")
+    .text("Risk");
+
+//Create Y axis
+svg.append("g")
+        .attr("class", "axis")
+        .attr("transform", "translate(" + padding + ",0)")
+        .call(yAxis);
+
+svg.append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("y", 0 )
+        .attr("x",0 - (h / 2))
+        .attr("dy", "1em")
+        .style("text-anchor", "middle")
+        .attr("font-size", "18px")
+        .attr("font-family", "sans-serif")
+        .text("Return");
 
 function compute() {
   dataMatrix = [];
@@ -258,7 +311,7 @@ function serverResponse(error, data) {
                         return h - yScale(d);
            })
            .attr("height", function(d) {
-                        return yScale(d);
+                        return yScale(d) - padding;
            })
            .attr("fill", function(d) {
                         return "rgb(0, 0, " + ((4*d-1.2) * 256) + ")";
