@@ -14,8 +14,8 @@
 </script>
 
 <!-- Next lines for styling (CSS) -->
-<style>
 
+<style>
 .axis path,
 .axis line {
         fill: none;
@@ -36,6 +36,7 @@
     <li class="current"><a href="#intro">Intro</a></li>
     <li><a href="#problem">Problem</a></li>
     <li><a href="#model">Model</a></li>
+    <li><a href="#datamatrix">Estimating Risk and Return</a></li>
     <li><a href="#implementation">Implementation</a></li>
     <li><a href="#demo">Live Demo</a></li>
   </ul>
@@ -49,6 +50,20 @@
     <div class="section" id="problem">
       <h2><a href="#problem" name="problem">Problem Description</a></h2>
       Problem description goes here
+      
+      <p>
+      We consider the classical portfolio problem introduced by Markowitz in 1952.
+      For a set of stocks held over a peridod of time, we wish to maximise the expected return while minimising
+      the risk.
+      </p>
+      
+      <p>
+      Also add section about Efficient Frontier
+      </p>
+      
+      <p>
+      Talk about Finance API and how model can be tested using real data
+      </p>
     </div>
     <div class="section" id="model">
       <h2><a href="#model" name="model">Mathematical Model</a></h2>
@@ -56,47 +71,81 @@
       <p>Model description goes here.</p>
 
 <!-- We use tex with $ as usual-->
-      <p>Let $V$ be the set of vertices in our graph and $E$ the set of edges.
-      We are interested in computing an <i>edge cover</i>: a set of
-      edges $C$ that cover all vertices in the graph (i.e. so that each vertex
-      in the graph has at least one edge incident on it).
-      </p>
-
-      <p> A minimal edge cover is one that uses the fewest edges. We
-        will compute this with integer programming. </p>
-
-      <p>First we define the variables
-      <!-- Eq in [] -->
+      <p> 
+      We consider $n$ stocks held over a period of time (Add reference to Boyd). We denote by $x_i$ the fraction
+      of the total wealth invested in stock $i$, i.e. $\sum_{i=1}^{n} x_i = 1$. In this way, a long position corresponds
+      to $x_i > 0$ and a short position to $x_i < 0$. If we assume we cannot go short by a larger amount than $s_i$, we have the constraint
       \[
-      x_e = \left\{\begin{array}{ll}
-             1 & \text{if  $e \in E$ is in the cover}\\
-             0 & \mathrm{otherwise}
-            \end{array}\right.
+        x_i \geq s_i
+      \]
+      for each stock $i$.
+      </p>
+      
+      <p>
+      We denote by $r_i$ expected return of stock $i$ over the time period. The total return of the portfolio is then given by
+      \[
+        \text{return} = r^T x
+      \]
+      Since we have normalised the $x$ variables, this corresponds to a fractional return. For example, if $\text{return} = 0.12$
+      this corresponds to 12% increase in the total value of the portfolio.
+      </p>
+      
+      <p> To estimate the risk we use the variance, which is defined as
+      \[
+        \text{variance} = x^T \Sigma x
+      \]
+      where $\Sigma$ is the covariance matrix of the return. We wish to bound the risk, so we can introduce a parameter $\sigma_{max}$
+      which will correspond to the maximum standard deviation (risk) allowed. This imposes a constraint
+      \[
+        x^T \Sigma x \leq \sigma_{max}^2
       \]
       </p>
-
-      <p>Then the following model can be solved to obtain a minimal edge cover
-      \[
+      
+      <p> So finally our model becomes
+       \[
       \begin{array}{ll}
-      \text{minimize} & \sum_{e \in E} x_e \\
-      \text{subject to} & \sum_{(u,v)=e \in E} x_e + \sum_{(v,u)=e \in E} x_e \ge 1, \quad \forall v \in V \\
-                        & x_e \in \{ 0, 1 \} \quad \forall e \in E
+      \text{maximize} & r^t x \\
+      \text{subject to} & \sum_{i=1}^{n} x_i = 1 \\
+                        & x_i \geq 0 \quad \text{for} \, i=1,..,n \\
+                        & x^T \Sigma x \leq \sigma_{max}^2
       \end{array}
       \]
+      By solving the optimization problem for various values of the parameter $\sigma_{max}$ we can compute the efficient frontier for the problem.
       </p>
-
-      <p>Given an optimal solution $x^\star$ to the above model, we
-      know that an edge $e$ will be in a minimal cover $C^\star$
-      if $x^\star_e = 1$. </p>
-<!-- implementation (gurobi code) -->
+      
+      </div>
+      <div class="section" id="datamatrix">
+      <h2><a href="#datamatrix" name="datamatrix">Estimating Risk and Return</a></h2>
+      <p>
+      There are several ways of computing the expected return and the variance. For this implementation, we use data collected from Yahoo Finance API
+      giving the closing price of various stocks for the past $N$ days. We can then use this data to estimate the return and variance.
+      </p>
+      
+      <p>
+      For $n$ stocks and $N$ daily closing prices we define an $N \times n$ data matrix $D$, so that each
+      column holds all the information for a single stock. So for each stock $j$ we define
+       \[
+      D_{ij} = \frac{ \text{closing price of $jth$ stock on $(i+1)th$ day}}{ \text{closing price of $jth$ stock on $ith$ day}}
+      \]</p>
+      
+      <p> We can then estimate the expected return $r$ for each stock simply as the mean over the time period
+      \[ r = \frac{1}{N} D^T \mathbf{1}
+      \]
+      so that the $ith$ entry of this vector corresponds to the expected return for stock $i$.</p>
+      
+      <p> We use the unbiased estimator for the covariance matrix
+      \[
+      \Sigma = \frac{1}{N-1}(D - \mathbf{1}r^T ) ^T (D - \mathbf{1}r^T )
+      \]</p>
     </div>
+      
     <div class="section" id="implementation">
       <h2><a href="#implementation" name="implementation">Implementation</a></h2>
       <p>Below is the full implementation of the model (and the associated data) in
         Gurobi's Python interface:
       </p>
       <pre>
-        THERE ARE SOME TYPOS IN HERE, CHECK AGAIN
+        DOUBLE CHECK THIS
         import numpy as np
         import math
         from gurobipy import *
@@ -116,7 +165,7 @@
         
         # Mean return for each stock
         e = np.ones(N)
-        r = np.dot(D.T,e)
+        r = np.dot(D.T,e)/N
         
         # Covariance matrix
         Dbar = (D - np.outer(e,r))/(math.sqrt(N-1))
@@ -207,11 +256,9 @@ svg.selectAll("rect")
 .attr("width", xScale.rangeBand())
 .attr("height", function(d) {
       return yScale(d) - padding;
-});
-
-
-svg.selectAll("rect").attr("fill", function(d) {
-      return "rgb(0, 0, " + ((4*d-1.2) * 256) + ")";
+})
+.attr("fill", function(d) {
+      return "rgb(0, 0, " + (200) + ")";
 });
 
 //Create labels
