@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
-<!-- Next lines for math/latex -->
 <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
 </script>
 <script>
@@ -12,8 +11,6 @@
 
                      });
 </script>
-
-<!-- Next lines for styling (CSS) -->
 
 <style>
 .axis path,
@@ -29,9 +26,7 @@
 }
 
 </style>
-<!-- Next lines html -->
 <body>
-  <!-- Navigation -->
   <ul id="nav">
     <li class="current"><a href="#intro">Intro</a></li>
     <li><a href="#problem">Problem</a></li>
@@ -40,7 +35,6 @@
     <li><a href="#implementation">Implementation</a></li>
     <li><a href="#demo">Live Demo</a></li>
   </ul>
-  <!--Set title and write stuff-->
   <div id="container">
     <div class="section" id="intro">
       <h1>Markowitz Portfolio Optimization</h1>
@@ -70,7 +64,6 @@
 
       <p>Model description goes here.</p>
 
-<!-- We use tex with $ as usual-->
       <p> 
       We consider $n$ stocks held over a period of time (Add reference to Boyd). We denote by $x_i$ the fraction
       of the total wealth invested in stock $i$, i.e. $\sum_{i=1}^{n} x_i = 1$. In this way, a long position corresponds
@@ -104,7 +97,7 @@
       <p> So finally our model becomes
        \[
       \begin{array}{ll}
-      \text{maximize} & r^t x \\
+      \text{maximize} & r^T x \\
       \text{subject to} & \sum_{i=1}^{n} x_i = 1 \\
                         & x_i \geq 0 \quad \text{for} \, i=1,..,n \\
                         & x^T \Sigma x \leq \sigma_{max}^2
@@ -131,7 +124,7 @@
       <p> We can then estimate the expected return $r$ for each stock simply as the mean over the time period
       \[ r = \frac{1}{N} D^T \mathbf{1}
       \]
-      so that the $ith$ entry of this vector corresponds to the expected return for stock $i$ (\mathbf{1} denotes the vector of ones).</p>
+      so that the $ith$ entry of this vector corresponds to the expected return for stock $i$ ($\mathbf{1}$ denotes the vector of ones).</p>
       
       <p> We use the unbiased estimator for the covariance matrix
       \[
@@ -145,7 +138,7 @@
         Gurobi's Python interface:
       </p>
       <pre>
-        DOUBLE CHECK THIS
+        !!! REMOVE NUMPY STUFF !!!
         import numpy as np
         import math
         from gurobipy import *
@@ -196,16 +189,12 @@
     </div>
     <div class="section" id="demo">
       <h2><a href="#demo" name="demo">Live Demo</a></h2>
-      <!-- Where we put graphics -->
       <div id="demoarea">
       </div>
-      <!-- When button is clicked => calls compute() -->
       <button onclick="compute()">Compute Optimal Portfolio</button>
     </div>
 
-    <!-- Load d3 library -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
-<!-- After script, javascript -->
 <script>
 
 
@@ -239,8 +228,6 @@ var svg = d3.select("#demoarea")
               .append("svg")
               .attr("width", w)
               .attr("height", h);
-
-
 
 //Create bars
 svg.selectAll("rect")
@@ -322,6 +309,8 @@ svg.append("text")
         .text("Return");
 
 function compute() {
+  // Need to use Finance API to create a matrix where each column has the evolution of
+  // the clsoing price of a stock over several days
   dataMatrix = [];
   for (var i = 0; i < 5; i++) {
     row = [];
@@ -331,18 +320,18 @@ function compute() {
     dataMatrix.push(row)
   }
   
-  console.log('dataMatrix', dataMatrix); // write out to the log (like print)
+  console.log('dataMatrix', dataMatrix);
 
-  d3.json('/resource') // using json (javascript format) function to send stuff to /resource page
+  d3.json('/resource')
     .header('Content-Type', 'application/json')
     .post(JSON.stringify({'dataMatrix': dataMatrix}), serverResponse);
 }
 
 function serverResponse(error, data) {
    console.log('serverResponse');
-   console.log('data', data); // Print out data
-   if (!error) { // error = 0 => everything okay
-      if ('maxRet' in data) { // data is dict, should have a key cover
+   console.log('data', data);
+   if (!error) { 
+      if ('maxRet' in data) {
         var maxRet = data.maxRet;
         console.log('maxRet', maxRet);
         
