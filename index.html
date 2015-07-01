@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
+<script src="//code.jquery.com/jquery-1.11.3.min.js"></script>
 <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
 </script>
 <script>
@@ -25,6 +26,12 @@
         font-size: 11px;
 }
 
+.line {
+ fill: none;
+ stroke: steelblue;
+ stroke-width: 1.5px;
+}
+
 </style>
 <body>
   <ul id="nav">
@@ -44,17 +51,17 @@
     <div class="section" id="problem">
       <h2><a href="#problem" name="problem">Problem Description</a></h2>
       Problem description goes here
-      
+
       <p>
       We consider the classical portfolio problem introduced by Markowitz in 1952.
       For a set of stocks held over a peridod of time, we wish to maximise the expected return while minimising
       the risk.
       </p>
-      
+
       <p>
       Also add section about Efficient Frontier
       </p>
-      
+
       <p>
       Talk about Finance API and how model can be tested using real data
       </p>
@@ -64,7 +71,7 @@
 
       <p>Model description goes here.</p>
 
-      <p> 
+      <p>
       We consider $n$ stocks held over a period of time (Add reference to Boyd). We denote by $x_i$ the fraction
       of the total wealth invested in stock $i$, i.e. $\sum_{i=1}^{n} x_i = 1$. In this way, a long position corresponds
       to $x_i > 0$ and a short position to $x_i < 0$. If we assume we cannot go short by a larger amount than $s_i$, we have the constraint
@@ -73,7 +80,7 @@
       \]
       for each stock $i$.
       </p>
-      
+
       <p>
       We denote by $r_i$ expected return of stock $i$ over the time period. The total return of the portfolio is then given by
       \[
@@ -82,7 +89,7 @@
       Since we have normalised the $x$ variables, this corresponds to a fractional return. For example, if $\text{return} = 0.12$
       this corresponds to 12% increase in the total value of the portfolio.
       </p>
-      
+
       <p> To estimate the risk we use the variance, which is defined as
       \[
         \text{variance} = x^T \Sigma x
@@ -93,7 +100,7 @@
         x^T \Sigma x \leq \sigma_{max}^2
       \]
       </p>
-      
+
       <p> So finally our model becomes
        \[
       \begin{array}{ll}
@@ -105,7 +112,7 @@
       \]
       By solving the optimization problem for various values of the parameter $\sigma_{max}$ we can compute the efficient frontier for the problem.
       </p>
-      
+
       </div>
       <div class="section" id="datamatrix">
       <h2><a href="#datamatrix" name="datamatrix">Estimating Risk and Return</a></h2>
@@ -113,25 +120,25 @@
       There are several ways of computing the expected return and the variance. For this implementation, we use data collected from Yahoo Finance API
       giving the closing price of various stocks for the past $N$ days. We can then use this data to estimate the return and variance.
       </p>
-      
+
       <p>
       For $n$ stocks and $N$ daily closing prices we define an $N \times n$ data matrix $D$, so that each
       column holds all the information for a single stock. So for each stock $j$ we define
        \[
       D_{ij} = \frac{ \text{closing price of $jth$ stock on $(i+1)th$ day}}{ \text{closing price of $jth$ stock on $ith$ day}}
       \]</p>
-      
+
       <p> We can then estimate the expected return $r$ for each stock simply as the mean over the time period
       \[ r = \frac{1}{N} D^T \mathbf{1}
       \]
       so that the $ith$ entry of this vector corresponds to the expected return for stock $i$ ($\mathbf{1}$ denotes the vector of ones).</p>
-      
+
       <p> We use the unbiased estimator for the covariance matrix
       \[
       \Sigma = \frac{1}{N-1}(D - \mathbf{1}r^T ) ^T (D - \mathbf{1}r^T )
       \]</p>
     </div>
-      
+
     <div class="section" id="implementation">
       <h2><a href="#implementation" name="implementation">Implementation</a></h2>
       <p>Below is the full implementation of the model (and the associated data) in
@@ -148,47 +155,49 @@
         D = [[0.02778, 0.00387, 0.00021],
           [0.00387, 0.01112, -0.00020],
           [0.00021, -0.00020, 0.00115]]
-        
+
         m = Model()
-        
+
         D = np.array(D)
-        
+
         n = D.shape[1] # number of stocks
         N = D.shape[0] # number of days traded
-        
+
         # Mean return for each stock
         e = np.ones(N)
         r = np.dot(D.T,e)/N
-        
+
         # Covariance matrix
         Dbar = (D - np.outer(e,r))/(math.sqrt(N-1))
         Sigma = np.dot(Dbar.T, Dbar)
-        
+
         # Add variables for each stock
         x = {};
         for i in range(n):
           x[i] = m.addVar(lb=0, vtype=GRB.CONTINUOUS, name = 'x' + str(i))
-        
+
         m.update()
-        
+
         # Add constraints
         m.addConstr(quicksum(x[i] for i in range(n)) == 1)
-        
+
         maxStdDev = 0.05
         variance = 0
         for i in range(n):
           for j in range(n):
               variance += x[i]*Sigma[i][j]*x[j]
         m.addConstr(variance <= maxStdDev*maxStdDev)
-        
+
         # Set objective
         m.setObjective(quicksum(r[i]*x[i] for i in range(n)), GRB.MAXIMIZE)
-        
+
         m.optimize()
       </pre>
     </div>
     <div class="section" id="demo">
       <h2><a href="#demo" name="demo">Live Demo</a></h2>
+      <input id="stock_symbol" type="text" value="BA">
+      <button onclick="get_quote()">Add Stock</button>
       <div id="demoarea">
       </div>
       <button onclick="compute()">Compute Optimal Portfolio</button>
@@ -308,18 +317,22 @@ svg.append("text")
         .attr("font-family", "sans-serif")
         .text("Return");
 
+var stock_data = {};
+
+
 function compute() {
   // Need to use Finance API to create a matrix where each column has the evolution of
   // the clsoing price of a stock over several days
-  dataMatrix = [];
-  for (var i = 0; i < 5; i++) {
-    row = [];
-    for (var j = 0; j < 5; j++) {
-      row.push(Math.random())
+  var dataMatrix = [];
+  var stock_symbols = Object.keys(stock_data);
+  for (var i = 0; i < stock_data[stock_symbols[0]].length; i++) {
+    var day_prices = [];
+    for (var j = 0; j < stock_symbols.length; j++) {
+       day_prices.push(stock_data[stock_symbols[j]][i]);
     }
-    dataMatrix.push(row)
+    dataMatrix.push(day_prices);
   }
-  
+
   console.log('dataMatrix', dataMatrix);
 
   d3.json('/resource')
@@ -330,11 +343,11 @@ function compute() {
 function serverResponse(error, data) {
    console.log('serverResponse');
    console.log('data', data);
-   if (!error) { 
+   if (!error) {
       if ('maxRet' in data) {
         var maxRet = data.maxRet;
         console.log('maxRet', maxRet);
-        
+
         //Update all rects
         svg.selectAll("rect")
            .data(maxRet)
@@ -352,7 +365,7 @@ function serverResponse(error, data) {
            .attr("fill", function(d) {
                         return "rgb(0, 0, " + ((4*d-1.2) * 256) + ")";
            });
-  
+
         //Update all labels
         svg.selectAll("text")
            .data(maxRet)
@@ -370,9 +383,94 @@ function serverResponse(error, data) {
            .attr("y", function(d) {
                         return h - yScale(d) + 14;
            });
-        
+
       }
    }
+}
+
+
+var parseDate = d3.time.format("%Y-%m-%d").parse;
+
+var stock_margin = {top: 20, right: 20, bottom: 30, left: 50},
+    stock_width = 960 - stock_margin.left - stock_margin.right,
+    stock_height = 200 - stock_margin.top - stock_margin.bottom;
+
+var x = d3.time.scale()
+    .range([0, stock_width]);
+
+var y = d3.scale.linear()
+    .range([stock_height, 0]);
+
+var xAxis = d3.svg.axis()
+    .scale(x)
+    .orient("bottom");
+
+var yAxis = d3.svg.axis()
+    .scale(y)
+    .orient("left");
+
+var line = d3.svg.line()
+    .x(function(d) { return x(d.date); })
+    .y(function(d) { return y(d.close); });
+
+var quote;
+
+function get_quote() {
+ var symbol =  $('#stock_symbol').val();
+ if (symbol.length == 0) return;
+
+ console.log('Getting data for', symbol);
+
+ $.ajax({
+        url: "https://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20yahoo.finance.historicaldata%20where%20symbol%20%3D%20%22" + symbol + "%22%20and%20startDate%20%3D%20%222014-09-11%22%20and%20endDate%20%3D%20%222015-06-30%22&format=json&diagnostics=true&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys&callback=quote",
+        dataType: "jsonp",
+        jsonp: "callback",
+        jsonpCallback: "quote"
+    });
+ quote = function(data) {
+   var stock_quotes = data.query.results.quote;
+   var cur;
+   var data = [];
+   var symbol = stock_quotes[0].Symbol;
+   var price_data = [];
+   for (var i=0; i < stock_quotes.length; i++) {
+      cur = stock_quotes[i];
+      data[i] = { date: parseDate(cur.Date), close: +cur.Close}
+      price_data[i] = +cur.Close;
+   }
+  stock_data[symbol] = price_data;
+  console.log('Got ', data.length, 'closing prices');
+
+  x.domain(d3.extent(data, function(d) { return d.date; }));
+  y.domain(d3.extent(data, function(d) { return d.close; }));
+
+  var stock_svg = d3.select("#demoarea").append("svg")
+    .attr("width", stock_width + stock_margin.left + stock_margin.right)
+    .attr("height", stock_height + stock_margin.top + stock_margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + stock_margin.left + "," + stock_margin.top + ")");
+
+  stock_svg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + stock_height + ")")
+      .call(xAxis);
+
+  stock_svg.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("Price ($) for " + symbol);
+
+  stock_svg.append("path")
+      .datum(data)
+      .attr("class", "line")
+      .attr("d", line);
+
+ };
 }
 
 </script>
