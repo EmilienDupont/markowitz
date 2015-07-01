@@ -44,17 +44,17 @@
     <div class="section" id="problem">
       <h2><a href="#problem" name="problem">Problem Description</a></h2>
       Problem description goes here
-      
+
       <p>
       We consider the classical portfolio problem introduced by Markowitz in 1952.
       For a set of stocks held over a peridod of time, we wish to maximise the expected return while minimising
       the risk.
       </p>
-      
+
       <p>
       Also add section about Efficient Frontier
       </p>
-      
+
       <p>
       Talk about Finance API and how model can be tested using real data
       </p>
@@ -64,7 +64,7 @@
 
       <p>Model description goes here.</p>
 
-      <p> 
+      <p>
       We consider $n$ stocks held over a period of time (Add reference to Boyd). We denote by $x_i$ the fraction
       of the total wealth invested in stock $i$, i.e. $\sum_{i=1}^{n} x_i = 1$. In this way, a long position corresponds
       to $x_i > 0$ and a short position to $x_i < 0$. If we assume we cannot go short by a larger amount than $s_i$, we have the constraint
@@ -73,7 +73,7 @@
       \]
       for each stock $i$.
       </p>
-      
+
       <p>
       We denote by $r_i$ expected return of stock $i$ over the time period. The total return of the portfolio is then given by
       \[
@@ -82,7 +82,7 @@
       Since we have normalised the $x$ variables, this corresponds to a fractional return. For example, if $\text{return} = 0.12$
       this corresponds to 12% increase in the total value of the portfolio.
       </p>
-      
+
       <p> To estimate the risk we use the variance, which is defined as
       \[
         \text{variance} = x^T \Sigma x
@@ -93,7 +93,7 @@
         x^T \Sigma x \leq \sigma_{max}^2
       \]
       </p>
-      
+
       <p> So finally our model becomes
        \[
       \begin{array}{ll}
@@ -105,7 +105,7 @@
       \]
       By solving the optimization problem for various values of the parameter $\sigma_{max}$ we can compute the efficient frontier for the problem.
       </p>
-      
+
       </div>
       <div class="section" id="datamatrix">
       <h2><a href="#datamatrix" name="datamatrix">Estimating Risk and Return</a></h2>
@@ -113,25 +113,25 @@
       There are several ways of computing the expected return and the variance. For this implementation, we use data collected from Yahoo Finance API
       giving the closing price of various stocks for the past $N$ days. We can then use this data to estimate the return and variance.
       </p>
-      
+
       <p>
       For $n$ stocks and $N$ daily closing prices we define an $N \times n$ data matrix $D$, so that each
       column holds all the information for a single stock. So for each stock $j$ we define
        \[
       D_{ij} = \frac{ \text{closing price of $jth$ stock on $(i+1)th$ day}}{ \text{closing price of $jth$ stock on $ith$ day}}
       \]</p>
-      
+
       <p> We can then estimate the expected return $r$ for each stock simply as the mean over the time period
       \[ r = \frac{1}{N} D^T \mathbf{1}
       \]
       so that the $ith$ entry of this vector corresponds to the expected return for stock $i$ ($\mathbf{1}$ denotes the vector of ones).</p>
-      
+
       <p> We use the unbiased estimator for the covariance matrix
       \[
       \Sigma = \frac{1}{N-1}(D - \mathbf{1}r^T ) ^T (D - \mathbf{1}r^T )
       \]</p>
     </div>
-      
+
     <div class="section" id="implementation">
       <h2><a href="#implementation" name="implementation">Implementation</a></h2>
       <p>Below is the full implementation of the model (and the associated data) in
@@ -148,42 +148,42 @@
         D = [[0.02778, 0.00387, 0.00021],
           [0.00387, 0.01112, -0.00020],
           [0.00021, -0.00020, 0.00115]]
-        
+
         m = Model()
-        
+
         D = np.array(D)
-        
+
         n = D.shape[1] # number of stocks
         N = D.shape[0] # number of days traded
-        
+
         # Mean return for each stock
         e = np.ones(N)
         r = np.dot(D.T,e)/N
-        
+
         # Covariance matrix
         Dbar = (D - np.outer(e,r))/(math.sqrt(N-1))
         Sigma = np.dot(Dbar.T, Dbar)
-        
+
         # Add variables for each stock
         x = {};
         for i in range(n):
           x[i] = m.addVar(lb=0, vtype=GRB.CONTINUOUS, name = 'x' + str(i))
-        
+
         m.update()
-        
+
         # Add constraints
         m.addConstr(quicksum(x[i] for i in range(n)) == 1)
-        
+
         maxStdDev = 0.05
         variance = 0
         for i in range(n):
           for j in range(n):
               variance += x[i]*Sigma[i][j]*x[j]
         m.addConstr(variance <= maxStdDev*maxStdDev)
-        
+
         # Set objective
         m.setObjective(quicksum(r[i]*x[i] for i in range(n)), GRB.MAXIMIZE)
-        
+
         m.optimize()
       </pre>
     </div>
@@ -319,7 +319,7 @@ function compute() {
     }
     dataMatrix.push(row)
   }
-  
+
   console.log('dataMatrix', dataMatrix);
 
   d3.json('/resource')
@@ -330,11 +330,11 @@ function compute() {
 function serverResponse(error, data) {
    console.log('serverResponse');
    console.log('data', data);
-   if (!error) { 
+   if (!error) {
       if ('maxRet' in data) {
         var maxRet = data.maxRet;
         console.log('maxRet', maxRet);
-        
+
         //Update all rects
         svg.selectAll("rect")
            .data(maxRet)
@@ -352,7 +352,7 @@ function serverResponse(error, data) {
            .attr("fill", function(d) {
                         return "rgb(0, 0, " + ((4*d-1.2) * 256) + ")";
            });
-  
+
         //Update all labels
         svg.selectAll("text")
            .data(maxRet)
@@ -370,7 +370,7 @@ function serverResponse(error, data) {
            .attr("y", function(d) {
                         return h - yScale(d) + 14;
            });
-        
+
       }
    }
 }
