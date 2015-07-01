@@ -118,11 +118,11 @@
       <h2><a href="#datamatrix" name="datamatrix">Estimating Risk and Return</a></h2>
       <p>
       There are several ways of computing the expected return and the variance. For this implementation, we use data collected from Yahoo Finance API
-      giving the closing price of various stocks for the past $N$ days. We can then use this data to estimate the return and variance.
+      giving the closing price of various stocks for the past $N+1$ days. We can then use this data to estimate the return and variance.
       </p>
 
       <p>
-      For $n$ stocks and $N$ daily closing prices we define an $N \times n$ data matrix $D$, so that each
+      For $n$ stocks and $N+1$ daily closing prices we define an $N \times n$ data matrix $D$, so that each
       column holds all the information for a single stock. So for each stock $j$ we define
        \[
       D_{ij} = \frac{ \text{closing price of $jth$ stock on $(i+1)th$ day}}{ \text{closing price of $jth$ stock on $ith$ day}}
@@ -322,18 +322,29 @@ var stock_data = {};
 
 function compute() {
   // Need to use Finance API to create a matrix where each column has the evolution of
-  // the clsoing price of a stock over several days
-  var dataMatrix = [];
+  // the closing price of a stock over several days
+  var rawData = [];
+  var numDays = 10; // Take only the first 10 days for testing
   var stock_symbols = Object.keys(stock_data);
-  for (var i = 0; i < stock_data[stock_symbols[0]].length; i++) {
-    var day_prices = [];
-    for (var j = 0; j < stock_symbols.length; j++) {
-       day_prices.push(stock_data[stock_symbols[j]][i]);
-    }
-    dataMatrix.push(day_prices);
+  var numStocks = stock_symbols.length;
+  console.log(stock_symbols) // list of different stocks (e.g. ["BA", "GM"])
+  
+  for (var i = 0; i < numStocks; i++) {
+    stock_i = stock_data[stock_symbols[i]]; // This contains all data for stock i
+    rawData.push(stock_i.slice(0,numDays)); 
   }
 
-  console.log('dataMatrix', dataMatrix);
+  var dataMatrix = [];
+  console.log('rawData', rawData);
+  
+  // (Raw data)_ji contains closing price of jth stock on ith day
+  for (var i = 0; i < numDays - 1; i++) {
+    day_i_prices = [];
+    for (var j = 0; j < numStocks; j++) {
+      day_i_prices.push(rawData[j][i+1] / rawData[j][i])
+    }
+    dataMatrix.push(day_i_prices)
+  }
 
   d3.json('/resource')
     .header('Content-Type', 'application/json')

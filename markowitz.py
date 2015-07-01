@@ -19,13 +19,20 @@ def optimize(Data):
     n = D.shape[1] # number of stocks
     N = D.shape[0] # number of days traded
     
+    print 'Number of stocks %d' % n
+    print 'Number of days %d' % N
+    
     # Mean return for each stock
     e = np.ones(N)
     r = np.dot(D.T,e)/N
     
+    print r
+    
     # Covariance matrix
     Dbar = (D - np.outer(e,r))/(math.sqrt(N-1))
     Sigma = dot(Dbar.T, Dbar)
+    
+    print Sigma
     
     # Add variables (one for each stock)
     x = {};
@@ -47,7 +54,7 @@ def optimize(Data):
     
     solution = []
     stdDev = []
-    k = 20
+    k = 0
     
     # Compute solution for k different points
     for i in range(k):
