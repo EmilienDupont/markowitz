@@ -18,12 +18,11 @@ else:
 import markowitz
 
 def handleoptimize(jsdict):
-    if 'dataMatrix' in jsdict:
+    if 'return' and 'Sigma' and 'maxRisk' in jsdict:
         print 'Inside handle optimize!'
-        print jsdict['dataMatrix']
-        maxRet = markowitz.optimize(jsdict['dataMatrix'])
-        print 'maxRet', maxRet
-        return {'maxRet': maxRet }
+        solution = markowitz.optimize(jsdict['return'], jsdict['Sigma'], jsdict['maxRisk'])
+        print 'solution', solution
+        return {'solution': solution }
 
 class ServerHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
