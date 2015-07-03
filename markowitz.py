@@ -6,13 +6,7 @@ def optimize(r, Sigma, maxRisk):
     print "in markowitz!"
     m = Model()
     
-    n = len(Sigma) # number of stocks
-    
-    print 'Number of stocks %d' % n
-    
-    print r
-    
-    print Sigma
+    n = len(r) # number of stocks
     
     # Add variables (one for each stock)
     x = {};
@@ -31,15 +25,15 @@ def optimize(r, Sigma, maxRisk):
     
     # Set objective
     m.setObjective(quicksum(r[i]*x[i] for i in range(n)), GRB.MAXIMIZE)
-    
-    solution = {'Stocks': [], 'Return': []}
 
     m.addConstr(variance <= maxRisk*maxRisk)
     
     m.update()
     
     m.optimize()
-
+    
+    solution = {'Stocks': [], 'Return': []}
+    
     stocks = []
     
     # Check if model is infeasible or unbounded (or numerical trouble)
