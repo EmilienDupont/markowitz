@@ -25,7 +25,7 @@ def optimize(r, Sigma, maxRisk):
     
     # Set objective
     m.setObjective(quicksum(r[i]*x[i] for i in range(n)), GRB.MAXIMIZE)
-
+    
     m.addConstr(variance <= maxRisk*maxRisk)
     
     m.update()

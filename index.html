@@ -184,9 +184,15 @@
       <input id="stock_symbol" type="text" value="BA">
       <button onclick="add_quote()">Add Stock</button>
       
-      <input type="range" id="myRange" value="50">
-      
-      <button onclick="update()">Compute with new risk</button>
+      <!-- Slider -->
+      <label for=myRange>Risk</label>
+      <input type="range" min = 0.005 max = 0.05 step = 0.001 id="myRange" value="0.01" oninput="outputUpdate(value)">
+      <output for=myRange id=riskDisplay>0.002</output>
+      <script>
+      function outputUpdate(value) {
+        document.querySelector('#riskDisplay').value = value;
+      }
+      </script>
       
       <div id="demoarea">
       </div>
@@ -196,8 +202,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
 <script>
 
-// Binary variable to see if server receives info from compute (1) or update (0)
-var source = 0;
+// Binary variable to see if stock was just added (1) or not (0)
+var addStock = 0;
 
 //Width and height
 var w = 800;
@@ -215,7 +221,7 @@ var svg = d3.select("#demoarea")
 var labelG = svg.append("g");
 var titleG = svg.append("g");
 
-var maxRisk = 0.1; // This can be varied with slider
+var maxRisk = 0.002; // This can be varied with slider
 var r = [];
 var Sigma = [];
 
@@ -233,7 +239,6 @@ get_quote("GOOG"); // Google
 
 
 function compute() {
-  source = 1;
   console.log("in compute")
   var numDays = 10; // Take only the first 10 days for testing
   var stock_symbols = Object.keys(stock_data);
@@ -284,27 +289,19 @@ function compute() {
     }
     Sigma.push(row);
   }
-  
+    
   console.log('Sigma', Sigma);
+
   
-  d3.json('/resource')
-    .header('Content-Type', 'application/json')
-    .post(JSON.stringify({'return': r, 'Sigma': Sigma, 'maxRisk': maxRisk}), serverResponse);
-}
-
-
-
-function update() {
   var slider = document.getElementById("myRange").value;
-  maxRisk = .001 + slider*(.0001);
-  source = 0;
+  maxRisk = parseFloat(slider);
+  
+  console.log('maxRisk', maxRisk);
   
   d3.json('/resource')
     .header('Content-Type', 'application/json')
     .post(JSON.stringify({'return': r, 'Sigma': Sigma, 'maxRisk': maxRisk}), serverResponse);
 }
-
-
 
 
 function serverResponse(error, data) {
@@ -333,7 +330,7 @@ function serverResponse(error, data) {
                               .domain([0, maxStock])
                               .range([padding, h - padding]);
         
-        if (source === 1) {
+        if (addStock) {
           svg.selectAll("rect").remove();
           
           //Create bars
@@ -398,7 +395,8 @@ function serverResponse(error, data) {
               .attr("y", 20)
               .attr("font-family", "sans-serif")
               .attr("font-size", "16px")
-              .attr("fill", "black");
+              .attr("fill", "black")
+              .attr("text-anchor", "middle");
           
           // Create labels
           labelG.selectAll("text").remove();
@@ -425,82 +423,84 @@ function serverResponse(error, data) {
         
         } else { // If only risk was changed, update the graph
         
-        //Update all rects
-        svg.selectAll("rect")
-           .data(stocks)
-           .transition()
-           .delay(function(d, i) {
-                   return i / stocks.length * 1000;
-           })
-           .duration(500)
-           .attr("y", function(d) {
-                        return h - yScale(d);
-           })
-           .attr("height", function(d) {
-                        return yScale(d) - padding;
-           })
-           .attr("fill", function(d) {
-                        return "rgb(0, 0, " + ((d/maxStock) * 255) + ")";
-           });
+          //Update all rects
+          svg.selectAll("rect")
+             .data(stocks)
+             .transition()
+             .delay(function(d, i) {
+                     return i / stocks.length * 1000;
+             })
+             .duration(500)
+             .attr("y", function(d) {
+                          return h - yScale(d);
+             })
+             .attr("height", function(d) {
+                          return yScale(d) - padding;
+             })
+             .attr("fill", function(d) {
+                          return "rgb(0, 0, " + ((d/maxStock) * 255) + ")";
+             });
 
-        titleG.selectAll("text").remove();
+          titleG.selectAll("text").remove();
+          
+          labelG.selectAll("text").remove();
+          
+          //Update all percentages
+          svg.selectAll("text")
+             .data(stocks)
+             .transition()
+             .delay(function(d, i) {
+                     return i / stocks.length * 1000;
+             })
+             .duration(500)
+             .text(function(d) {
+                          return formatAsPercentage(d);
+             })
+             .attr("x", function(d, i) {
+                          return xScale(i) + xScale.rangeBand() / 2;
+             })
+             .attr("y", function(d) {
+                          return h - yScale(d) + 14;
+             });
         
-        labelG.selectAll("text").remove();
-        
-        //Update all percentages
-        svg.selectAll("text")
-           .data(stocks)
-           .transition()
-           .delay(function(d, i) {
-                   return i / stocks.length * 1000;
-           })
-           .duration(500)
-           .text(function(d) {
-                        return formatAsPercentage(d);
-           })
-           .attr("x", function(d, i) {
+          if (maxRet === 0) {
+            var title = "Problem infeasible. Try increasing risk";
+          } else {
+            var title = "Return: " + formatAsPercentage(maxRet-1);
+          }
+          
+          console.log('maxRet', maxRet)
+          
+          // Update return
+          titleG.append("text")
+              .text(title)
+              .attr("x", w/2)
+              .attr("y", 20)
+              .attr("font-family", "sans-serif")
+              .attr("font-size", "16px")
+              .attr("fill", "black")
+              .attr("text-anchor", "middle");
+          
+          // Put the labels
+          labelG.selectAll("text")
+                  .data(symbolList)
+                  .enter()
+                  .append("text")
+                  .attr("font-family", "sans-serif")
+                  .attr("font-size", "14px")
+                  .attr("fill", "black")
+                  .text(function (d) {
+                    return d;
+                  })
+                  .attr("text-anchor", "middle")
+                  .attr("x", function(d, i) {
                         return xScale(i) + xScale.rangeBand() / 2;
-           })
-           .attr("y", function(d) {
-                        return h - yScale(d) + 14;
-           });
-        
-        if (maxRet === 0) {
-          var title = "Problem infeasible. Try increasing risk";
-        } else {
-          var title = "Return: " + formatAsPercentage(maxRet-1);
+                  })
+                  .attr("y", function(d) {
+                        return h - 30;
+                  });
         }
-        
-        console.log('maxRet', maxRet)
-        
-        // Update return
-        titleG.append("text")
-            .text(title)
-            .attr("x", w/2)
-            .attr("y", 20)
-            .attr("font-family", "sans-serif")
-            .attr("font-size", "16px")
-            .attr("fill", "black");
-        
-        // Put the labels
-        labelG.selectAll("text")
-                .data(symbolList)
-                .enter()
-                .append("text")
-                .attr("font-family", "sans-serif")
-                .attr("font-size", "14px")
-                .attr("fill", "black")
-                .text(function (d) {
-                  return d;
-                })
-                .attr("text-anchor", "middle")
-                .attr("x", function(d, i) {
-                      return xScale(i) + xScale.rangeBand() / 2;
-                })
-                .attr("y", function(d) {
-                      return h - 30;
-                });
-        }
+        addStock = 0;
       }
    }
 }
@@ -539,8 +539,9 @@ function add_quote() {
 
 function get_quote(symbol) {
  console.log('Getting data for', symbol);
- symbolList.push(symbol);
-
+  
+ addStock = 1; // added stock
+ 
  $.ajax({
         url: "https://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20yahoo.finance.historicaldata%20where%20symbol%20%3D%20%22" + symbol + "%22%20and%20startDate%20%3D%20%222014-09-11%22%20and%20endDate%20%3D%20%222015-06-30%22&format=json&diagnostics=true&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys&callback=quote",
         dataType: "jsonp",
@@ -552,6 +553,7 @@ function get_quote(symbol) {
    var cur;
    var data = [];
    var symbol = stock_quotes[0].Symbol;
+   symbolList.push(symbol); // Add the symbol of the stock just added
    var price_data = [];
    for (var i=0; i < stock_quotes.length; i++) {
       cur = stock_quotes[i];
