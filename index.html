@@ -211,6 +211,7 @@ var h = 500;
 var padding = 50;
 
 var formatAsPercentage = d3.format(".1%")
+var formatAsPercentage3 = d3.format(".3%")
 
 var svg = d3.select("#demoarea")
               .append("svg")
@@ -233,10 +234,11 @@ var symbolList = [];
 
 // Start with a few stocks
 get_quote("GM"); // General Motors
-get_quote("GOOG"); // Google
-//get_quote("YHOO"); // Yahoo
-//get_quote("TM"); // Toyota
-
+setTimeout( function() { get_quote("GOOG"); }, 2000 ); // Google
+setTimeout( function() { get_quote("YHOO"); }, 4000 ); // Yahoo
+setTimeout( function() { get_quote("TM"); }, 6000 ); // Toyota
+setTimeout( function() { get_quote("NESN"); }, 8000 ); // Nestle
+setTimeout( function() { get_quote("SNE"); }, 10000 ); // Sony
 
 function compute() {
   console.log("in compute")
@@ -349,7 +351,9 @@ function serverResponse(error, data) {
                     return yScale(d) - padding;
               })
               .attr("fill", function(d) {
-                    return "rgb(0, 0, " + ((d/maxStock)*255) + ")";
+                    var barfill = Math.round( 255*d/maxStock );
+                    console.log('barfill', barfill);
+                    return "rgb(0, 0, " + (barfill) + ")";
               });
   
           //Create percentages on each box
@@ -386,7 +390,7 @@ function serverResponse(error, data) {
           if (maxRet === 0) {
             var title = "Problem infeasible. Try increasing risk";
           } else {
-            var title = "Return: " + formatAsPercentage(maxRet-1);
+            var title = "Return: " + formatAsPercentage3(maxRet-1);
           }
           
           titleG.append("text")
@@ -408,7 +412,7 @@ function serverResponse(error, data) {
                 .enter()
                 .append("text")
                 .attr("font-family", "sans-serif")
-                .attr("font-size", "14px")
+                .attr("font-size", "16px")
                 .attr("fill", "black")
                 .text(function (d) {
                   return d;
@@ -418,7 +422,7 @@ function serverResponse(error, data) {
                       return xScale(i) + xScale.rangeBand() / 2;
                 })
                 .attr("y", function(d) {
-                      return h - 30;
+                      return h - 20;
                 });
         
         } else { // If only risk was changed, update the graph
@@ -438,7 +442,9 @@ function serverResponse(error, data) {
                           return yScale(d) - padding;
              })
              .attr("fill", function(d) {
-                          return "rgb(0, 0, " + ((d/maxStock) * 255) + ")";
+                          var barfill = Math.round( 255*d/maxStock );
+                          console.log('barfill', barfill);
+                          return "rgb(0, 0, " + (barfill) + ")";
              });
 
           titleG.selectAll("text").remove();
@@ -466,7 +472,7 @@ function serverResponse(error, data) {
           if (maxRet === 0) {
             var title = "Problem infeasible. Try increasing risk";
           } else {
-            var title = "Return: " + formatAsPercentage(maxRet-1);
+            var title = "Return: " + formatAsPercentage3(maxRet-1);
           }
           
           console.log('maxRet', maxRet)
@@ -487,7 +493,7 @@ function serverResponse(error, data) {
                   .enter()
                   .append("text")
                   .attr("font-family", "sans-serif")
-                  .attr("font-size", "14px")
+                  .attr("font-size", "16px")
                   .attr("fill", "black")
                   .text(function (d) {
                     return d;
@@ -497,7 +503,7 @@ function serverResponse(error, data) {
                         return xScale(i) + xScale.rangeBand() / 2;
                   })
                   .attr("y", function(d) {
-                        return h - 30;
+                        return h - 20;
                   });
         }
         addStock = 0;
