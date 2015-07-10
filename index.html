@@ -306,7 +306,7 @@ function compute() {
 
   console.log('maxRisk', maxRisk);
 
-  d3.json('/resource')
+  d3.json('/markowitz')
     .header('Content-Type', 'application/json')
     .post(JSON.stringify({'return': r, 'Sigma': Sigma, 'maxRisk': maxRisk}), serverResponse);
 }
