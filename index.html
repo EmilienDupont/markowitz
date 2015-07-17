@@ -146,7 +146,7 @@ aside {
     <li class="current"><a href="#intro">Intro</a></li>
     <li><a href="#problem">Problem</a></li>
     <li><a href="#model">Model</a></li>
-    <li><a href="#datamatrix">Estimating Risk and Return</a></li>
+    <li><a href="#datamatrix">Risk and Return</a></li>
     <li><a href="#implementation">Implementation</a></li>
     <li><a href="#demo">Live Demo</a></li>
   </ul>
@@ -156,28 +156,38 @@ aside {
         <subtitle>with quadratic programming and Gurobi</subtitle>
     </div>
 
+    <p> In this example we'll solve a Portfolio Optimization problem: for a set of stocks held
+    over a period of time, how do we maximize the expected return while minimizing
+      the risk? </p>
+
+    <p> We'll construct a mathematical model of the business problem, implement this model in
+    Gurobi's Python interface, and compute and visualize an optimal solution.</p>
+
     <div class="section" id="problem">
       <h2><a href="#problem" name="problem">Problem Description</a></h2>
-      Problem description goes here
 
       <p>
-      We consider the classical portfolio problem introduced by Markowitz in 1952.
-      For a set of stocks held over a peridod of time, we wish to maximise the expected return while minimising
-      the risk.
+      We consider the classical portfolio problem introduced by Harry Markowitz in 1952.
+      The basic concept behind this theory is that assets in a portfolio should not be chosen
+      based on individual merit, but rather as a whole taking into consideration the correlations
+      between assets.
       </p>
 
       <p>
-      Also add section about Efficient Frontier
+      The model is based on a tradeoff between risk and expected return. Indeed, to maximize
+      return, one could just invest all the wealth in the stock with the largest return.
+      However, this is clearly a risky strategy, so it is often better to distribute the wealth
+      over different assets to reduce the risk.
       </p>
 
       <p>
-      Talk about Finance API and how model can be tested using real data
+      We will apply our model to real stocks using data from the Yahoo Finance API. Using the Live Demo,
+      you can create a portfolio and add any stock while deciding how much risk you allow. Gurobi will
+      then compute the portfolio distribution which maximizes your return.
       </p>
     </div>
     <div class="section" id="model">
       <h2><a href="#model" name="model">Mathematical Model</a></h2>
-
-      <p>Model description goes here.</p>
 
       <p>
       We consider $n$ stocks held over a period of time (Add reference to Boyd). We denote by $x_i$ the fraction
@@ -218,12 +228,12 @@ aside {
                         & x^T \Sigma x \leq \sigma_{max}^2
       \end{array}
       \]
-      By solving the optimization problem for various values of the parameter $\sigma_{max}$ we can compute the efficient frontier for the problem.
+      Note that the constraint $x_i \geq 0$ means we do not go short.
       </p>
 
       </div>
       <div class="section" id="datamatrix">
-      <h2><a href="#datamatrix" name="datamatrix">Estimating Risk and Return</a></h2>
+      <h2><a href="#datamatrix" name="datamatrix">Risk and Return</a></h2>
       <p>
       There are several ways of computing the expected return and the variance. For this implementation, we use data collected from Yahoo Finance API
       giving the closing price of various stocks for the past $N+1$ days. We can then use this data to estimate the return and variance.
