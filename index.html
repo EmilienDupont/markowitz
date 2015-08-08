@@ -359,12 +359,12 @@ var quote;
 var symbolList = [];
 
 // Start with a few stocks
-get_quote("GM"); // General Motors
-setTimeout( function() { get_quote("GOOG"); }, 2000 ); // Google
-setTimeout( function() { get_quote("YHOO"); }, 4000 ); // Yahoo
-setTimeout( function() { get_quote("TM"); }, 6000 ); // Toyota
-setTimeout( function() { get_quote("NESN"); }, 8000 ); // Nestle
-setTimeout( function() { get_quote("SNE"); }, 10000 ); // Sony
+get_quote("GM", 100);   // General Motors
+get_quote("GOOG", 100); // Google
+get_quote("YHOO", 100); // Yahoo
+get_quote("TM", 100);   // Toyota
+get_quote("NESN", 100); // Nestle
+get_quote("SNE", 100);  // Sony
 
 function compute() {
   console.log("in compute")
@@ -643,53 +643,38 @@ function serverResponse(error, data) {
 function add_quote() {
   var symbol =  $('#stock_symbol').val();
   if (symbol.length == 0) return;
-  get_quote(symbol);
+  get_quote(symbol, 100);
 }
 
 
-function get_quote(symbol) {
+function get_quote(symbol, numdays) {
+ // goes numdays back. Note that there will be less than numdays
+ // quotes returned, since the stock market is closed on weekends
 
-  var loadingG = svg.append("g");
-
-  if (symbolList.indexOf(symbol) !== -1) {
+ if (symbolList.indexOf(symbol) !== -1) {
     alert(symbol + " has already been added!");
     return;
-  }
+ }
 
-  loadingG.append("rect")
-          .attr("x", 0)
-          .attr("y", 0)
-          .attr("width", w)
-          .attr("height", h)
-          .attr("fill", "white")
-          .attr("opacity", .9);
+ callbackname = "quote" + symbol;
 
-  loadingG.append("text")
-          .attr("x", w/2)
-          .attr("y", h/2)
-          .attr("font-family", "sans-serif")
-           .attr("font-size", "16px")
-           .attr("fill", "black")
-           .text("Loading data for " + symbol)
-           .attr("text-anchor", "middle");
+ var dateFormat = d3.time.format('%Y-%m-%d')
+ enddate = dateFormat(new Date());
+ startdate = dateFormat(d3.time.day.offset(new Date(), -numdays))
 
-  console.log('Getting data for', symbol);
+ $.ajax({
+        url: "https://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20yahoo.finance.historicaldata%20where%20symbol%20%3D%20%22" + symbol + "%22%20and%20startDate%20%3D%20%22" + startdate + "%22%20and%20endDate%20%3D%20%22" + enddate + "%22&format=json&diagnostics=true&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys&callback=" + callbackname,
+        dataType: "jsonp",
+        jsonp: "callback",
+        jsonpCallback: callbackname
+    });
 
-  $.ajax({
-         url: "https://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20yahoo.finance.historicaldata%20where%20symbol%20%3D%20%22" + symbol + "%22%20and%20startDate%20%3D%20%222014-09-11%22%20and%20endDate%20%3D%20%222015-06-30%22&format=json&diagnostics=true&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys&callback=quote",
-         dataType: "jsonp",
-         jsonp: "callback",
-         jsonpCallback: "quote"
-     });
-
-    quote = function(data) {
+ window[callbackname] = function(data) {
         try {
           var stock_quotes = data.query.results.quote;
         }
         catch(err) {
           alert("Failed to load data. Check if stock name is correct");
-          loadingG.selectAll("rect").remove("rect");
-          loadingG.selectAll("text").remove("text");
           return;
         }
         var cur;
@@ -707,8 +692,6 @@ function get_quote(symbol) {
         symbolList.push(symbol); // Add the symbol of the stock just added
 
         addStock = 1; // added stock
-        loadingG.selectAll("rect").remove("rect");
-        loadingG.selectAll("text").remove("text");
     };
     return;
 }
