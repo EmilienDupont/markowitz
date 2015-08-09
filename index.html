@@ -375,7 +375,7 @@ get_quote("SNE", 100);  // Sony
 function compute() {
   console.log("in compute")
   var numDays = 50; // Take only the first days for testing
-  var stock_symbols = Object.keys(stock_data);
+  var stock_symbols = symbolList;
   var numStocks = stock_symbols.length;
   console.log(stock_symbols) // list of different stocks (e.g. ["BA", "GM"])
 
@@ -468,13 +468,14 @@ function serverResponse(error, data) {
 
         color.domain(symbolList);
 
+        console.log("color YHOO", color("YHOO"));
+
         var maxStock = d3.max(stocks);
 
         if (maxRet === 0) {
             var title = "Problem infeasible. Try increasing risk";
         } else {
-           var display = Math.pow(maxRet, 365); // annualize return
-           var title = "Return: " + formatAsPercentage3(display-1);
+           var title = "Profit: " + formatAsPercentage3(maxRet - 1);
         }
 
         titleG.selectAll("text").remove();
@@ -498,7 +499,7 @@ function serverResponse(error, data) {
         g.append("path")
          .attr("d", arc)
          .style("fill", function (d) {
-                          return color(d.data.percent);
+                          return color(d.data.symbol);
                           });
 
         g.append("text")
