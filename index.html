@@ -446,7 +446,7 @@ var arc = d3.svg.arc()
     .innerRadius(radius - 70);
 
 var pie = d3.layout.pie()
-    .sort(function (d) { return d.percent; })
+    .sort(function (a, b) { return d3.ascending(a.percent, b.percent); })
     .value(function(d) { return d.percent; });
 
 function serverResponse(error, data) {
