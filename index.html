@@ -140,6 +140,10 @@ aside {
     width: 500px;
 }
 
+.arc path {
+  stroke: #fff;
+}
+
 </style>
 <body>
   <ul id="nav">
@@ -332,8 +336,8 @@ aside {
 var addStock = 0;
 
 //Width and height
-var w = 800;
-var h = 500;
+var width = 800;
+var height = 500;
 var padding = 50;
 
 var formatAsPercentage = d3.format(".1%")
@@ -341,10 +345,12 @@ var formatAsPercentage3 = d3.format(".3%")
 
 var svg = d3.select("#demoarea")
               .append("svg")
-              .attr("width", w)
-              .attr("height", h)
-              .attr("class", "graph-svg-component");
+              .attr("width", width)
+              .attr("height", height);
 
+
+var donutG = svg.append("g")
+              .attr("transform", "translate(" + width/2 + "," + height/2 + ")");
 var labelG = svg.append("g");
 var titleG = svg.append("g");
 
@@ -431,6 +437,17 @@ function compute() {
     .post(JSON.stringify({'return': r, 'Sigma': Sigma, 'maxRisk': maxRisk}), serverResponse);
 }
 
+var radius = Math.min(width, height) / 2;
+var color = d3.scale.ordinal()
+    .range(["#98abc5", "#8a89a6", "#7b6888", "#6b486b", "#a05d56", "#d0743c", "#ff8c00"]);
+
+var arc = d3.svg.arc()
+    .outerRadius(radius - 10)
+    .innerRadius(radius - 70);
+
+var pie = d3.layout.pie()
+    .sort(function (d) { return d.percent; })
+    .value(function(d) { return d.percent; });
 
 function serverResponse(error, data) {
    console.log('serverResponse');
@@ -443,198 +460,59 @@ function serverResponse(error, data) {
         var maxRet = solution['Return'];
         var stocks = solution['Stocks'];
 
-        console.log('stocks', stocks)
+        var piedata = [];
+        for (var i=0; i < stocks.length; i++) {
+            piedata.push({ percent: stocks[i], symbol: symbolList[i] });
+        }
+        console.log(piedata);
+
+        color.domain(symbolList);
 
         var maxStock = d3.max(stocks);
 
-        console.log('max', maxStock);
-
-        // Define the scales
-        var xScale = d3.scale.ordinal()
-                              .domain(d3.range(stocks.length))
-                              .rangeRoundBands([padding, w], 0.05);
-
-        var yScale = d3.scale.linear()
-                              .domain([0, maxStock])
-                              .range([padding, h - padding]);
-
-        if (addStock) {
-          svg.selectAll("rect").remove();
-
-          //Create bars
-          svg.selectAll("rect")
-              .data(stocks)
-              .enter()
-              .append("rect")
-              .attr("x", function(d, i) {
-                    return xScale(i);
-              })
-              .attr("y", function(d) {
-                    return h - yScale(d);
-              })
-              .attr("width", xScale.rangeBand())
-              .attr("height", function(d) {
-                    return yScale(d) - padding;
-              })
-              .attr("fill", function(d) {
-                    var barfill = Math.round( 255*d/maxStock );
-                    console.log('barfill', barfill);
-                    return "rgb(0, 0, " + (barfill) + ")";
-              });
-
-          //Create percentages on each box
-          svg.selectAll("text").remove();
-
-          svg.selectAll("text")
-              .data(stocks)
-              .enter()
-              .append("text")
-              .text(function(d) {
-                    if (d === 0) {
-                      return " ";
-                    }
-                    else {
-                      return formatAsPercentage(d);
-                    }
-              })
-              .attr("text-anchor", "middle")
-              .attr("x", function(d, i) {
-                    return xScale(i) + xScale.rangeBand() / 2;
-              })
-              .attr("y", function(d) {
-                    return h - yScale(d) + 14;
-              })
-              .attr("font-family", "sans-serif")
-              .attr("font-size", "11px")
-              .attr("fill", "white");
-
-          // Write return on top of picture
-          titleG.selectAll("text").remove();
-
-          console.log('maxRet', maxRet)
-
-          if (maxRet === 0) {
+        if (maxRet === 0) {
             var title = "Problem infeasible. Try increasing risk";
-          } else {
-            var display = Math.pow(maxRet, 365); // annualize return
-            var title = "Return: " + formatAsPercentage3(display-1);
-          }
-
-          titleG.append("text")
-              .text(title)
-              .attr("x", w/2)
-              .attr("y", 20)
-              .attr("font-family", "sans-serif")
-              .attr("font-size", "16px")
-              .attr("fill", "black")
-              .attr("text-anchor", "middle");
-
-          // Create labels
-          labelG.selectAll("text").remove();
-
-          console.log('symbolList',symbolList);
-
-          labelG.selectAll("text")
-                .data(symbolList)
-                .enter()
-                .append("text")
-                .attr("font-family", "sans-serif")
-                .attr("font-size", "16px")
-                .attr("fill", "black")
-                .text(function (d) {
-                  return d;
-                })
-                .attr("text-anchor", "middle")
-                .attr("x", function(d, i) {
-                      return xScale(i) + xScale.rangeBand() / 2;
-                })
-                .attr("y", function(d) {
-                      return h - 20;
-                });
-
-        } else { // If only risk was changed, update the graph
-
-          //Update all rects
-          svg.selectAll("rect")
-             .data(stocks)
-             .transition()
-             .delay(function(d, i) {
-                     return i / stocks.length * 1000;
-             })
-             .duration(500)
-             .attr("y", function(d) {
-                          return h - yScale(d);
-             })
-             .attr("height", function(d) {
-                          return yScale(d) - padding;
-             })
-             .attr("fill", function(d) {
-                          var barfill = Math.round( 255*d/maxStock );
-                          console.log('barfill', barfill);
-                          return "rgb(0, 0, " + (barfill) + ")";
-             });
-
-          titleG.selectAll("text").remove();
-
-          labelG.selectAll("text").remove();
-
-          //Update all percentages
-          svg.selectAll("text")
-             .data(stocks)
-             .transition()
-             .delay(function(d, i) {
-                     return i / stocks.length * 1000;
-             })
-             .duration(500)
-             .text(function(d) {
-                          return formatAsPercentage(d);
-             })
-             .attr("x", function(d, i) {
-                          return xScale(i) + xScale.rangeBand() / 2;
-             })
-             .attr("y", function(d) {
-                          return h - yScale(d) + 14;
-             });
-
-          if (maxRet === 0) {
-            var title = "Problem infeasible. Try increasing risk";
-          } else {
-            var display = Math.pow(maxRet, 365); // annualize return
-            var title = "Return: " + formatAsPercentage3(display-1);
-          }
-
-          console.log('maxRet', maxRet)
-
-          // Update return
-          titleG.append("text")
-              .text(title)
-              .attr("x", w/2)
-              .attr("y", 20)
-              .attr("font-family", "sans-serif")
-              .attr("font-size", "16px")
-              .attr("fill", "black")
-              .attr("text-anchor", "middle");
-
-          // Put the labels
-          labelG.selectAll("text")
-                  .data(symbolList)
-                  .enter()
-                  .append("text")
-                  .attr("font-family", "sans-serif")
-                  .attr("font-size", "16px")
-                  .attr("fill", "black")
-                  .text(function (d) {
-                    return d;
-                  })
-                  .attr("text-anchor", "middle")
-                  .attr("x", function(d, i) {
-                        return xScale(i) + xScale.rangeBand() / 2;
-                  })
-                  .attr("y", function(d) {
-                        return h - 20;
-                  });
+        } else {
+           var display = Math.pow(maxRet, 365); // annualize return
+           var title = "Return: " + formatAsPercentage3(display-1);
         }
-        addStock = 0;
+
+        titleG.selectAll("text").remove();
+
+        titleG.append("text")
+           .text(title)
+           .attr("x", width/2)
+           .attr("y", height/2)
+           .attr("font-family", "sans-serif")
+           .attr("font-size", "16px")
+           .attr("fill", "black")
+           .attr("text-anchor", "middle");
+
+        donutG.selectAll(".arc").remove();
+
+        var g = donutG.selectAll(".arc")
+                   .data(pie(piedata))
+                 .enter().append("g")
+                    .attr("class", "arc");
+
+        g.append("path")
+         .attr("d", arc)
+         .style("fill", function (d) {
+                          return color(d.data.percent);
+                          });
+
+        g.append("text")
+          .attr("transform", function (d) { return "translate(" + arc.centroid(d) + ")"; })
+          .attr("dy", ".3em")
+          .style("text-anchor", "middle")
+          .text(function (d) {
+                          if (d.data.percent > 0.01) {
+                            return d.data.symbol + " " + formatAsPercentage(d.data.percent);
+                          } else {
+                             return "";
+                          }
+                          });
+
       }
    }
 }
