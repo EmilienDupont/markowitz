@@ -144,6 +144,10 @@ aside {
   stroke: #fff;
 }
 
+.area {
+  fill: #e7e7e7;
+}
+
 </style>
 <body>
   <ul id="nav">
@@ -340,8 +344,14 @@ var width = 800;
 var height = 500;
 var padding = 50;
 
+var time_height = 70;
+
 var formatAsPercentage = d3.format(".1%")
 var formatAsPercentage3 = d3.format(".3%")
+
+d3.select("#demoarea")
+      .append("div")
+      .attr("id", "timeseries");
 
 var svg = d3.select("#demoarea")
               .append("svg")
@@ -363,6 +373,25 @@ var stock_data = {};
 var parseDate = d3.time.format("%Y-%m-%d").parse;
 var quote;
 var symbolList = [];
+
+
+var x = d3.time.scale()
+         .range([0, width])
+
+var y = d3.scale.linear()
+          .range([time_height, 0])
+
+var area = d3.svg.area()
+             .x(function (d) { return x(d.date); })
+             .y0(time_height)
+             .y1(function (d) { return y(d.close); });
+
+var line = d3.svg.area()
+              .x(function (d) { return x(d.date); })
+              .y(function (d) { return y(d.close); })
+
+var timeseries_data = [];
+
 
 // Start with a few stocks
 get_quote("GM", 100);   // General Motors
@@ -526,6 +555,7 @@ function add_quote() {
 }
 
 
+
 function get_quote(symbol, numdays) {
  // goes numdays back. Note that there will be less than numdays
  // quotes returned, since the stock market is closed on weekends
@@ -557,20 +587,61 @@ function get_quote(symbol, numdays) {
           return;
         }
         var cur;
-        var data = [];
+        var my_data = [];
         var symbol = stock_quotes[0].Symbol;
         var price_data = [];
+        var max_price = 0;
+        var min_price = Infinity;
         for (var i=0; i < stock_quotes.length; i++) {
            cur = stock_quotes[i];
-           data[i] = { date: parseDate(cur.Date), close: +cur.Close}
+           my_data[i] = { date: parseDate(cur.Date), close: +cur.Close}
            price_data[i] = +cur.Close;
+           max_price = Math.max(max_price, +cur.Close);
+           min_price = Math.min(min_price, +cur.Close);
         }
 
         stock_data[symbol] = price_data;
-        console.log('Got ', data.length, 'closing prices');
+        console.log('Got ', my_data.length, 'closing prices');
         symbolList.push(symbol); // Add the symbol of the stock just added
 
+        timeseries_data.push({    symbol: symbol,
+                                    data: my_data,
+                               max_price: max_price,
+                               min_price: min_price });
+
         addStock = 1; // added stock
+
+        x.domain([ my_data[0].date, my_data[my_data.length-1].date ]);
+
+        d3.select("#timeseries").selectAll("svg").remove();
+
+        var timeseries = d3.select("#timeseries").selectAll("svg")
+                         .data(timeseries_data)
+                         .enter().append("svg")
+                           .attr("width", width + 20)
+                           .attr("height", time_height + 40)
+                         .append("g")
+                           .attr("transform", "translate(10, 10)");
+
+        timeseries.append("path")
+               .attr("class", "area")
+               .attr("d", function (d) {
+                                         y.domain([d.min_price, d.max_price]);
+                                         return area(d.data);
+                                       });
+
+        timeseries.append("path")
+              .attr("class", "line")
+              .attr("d", function (d) {
+                                       y.domain([d.min_price, d.max_price]);
+                                       return line(d.data);
+                                      });
+        timeseries.append("text")
+                  .attr("x", width - 6)
+                  .attr("y", time_height - 6)
+                  .style("text-anchor", "end")
+                  .text(function (d) { return d.symbol; });
+
     };
     return;
 }
